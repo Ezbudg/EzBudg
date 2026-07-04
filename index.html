@@ -38,6 +38,19 @@
   .goals-table td.label{ color:#333; width:210px; }
   .goals-table input{ width:120px; padding:5px 7px; border:1px solid #bbb; font-size:13.5px; font-family:inherit; }
 
+  .breakdown-toggle{ font-size:11px; color:#888; text-decoration:underline; cursor:pointer; margin-left:8px; font-weight:normal; }
+  .breakdown-panel{ background:#fafafa; border:1px solid #ddd; border-radius:6px; padding:12px 14px; margin:6px 0 10px; max-width:420px; }
+  .breakdown-panel .field label{ display:block; font-size:11.5px; color:#333; margin-bottom:4px; }
+  .breakdown-panel .field input{ width:100%; padding:6px 8px; border:1px solid #bbb; font-family:inherit; font-size:13px; }
+  .breakdown-sub-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.03em; color:#888; margin:4px 0 6px; }
+  .owed-row{ display:flex; gap:6px; margin-bottom:6px; }
+  .owed-row input[type=text]{ flex:1.3; padding:5px 7px; border:1px solid #bbb; font-family:inherit; font-size:13px; }
+  .owed-row input[type=number]{ flex:1; padding:5px 7px; border:1px solid #bbb; font-family:inherit; font-size:13px; }
+  .owed-row button{ border:none; background:none; color:#999; cursor:pointer; font-size:13px; }
+  .add-line{ background:none; border:1px dashed #bbb; color:#888; border-radius:6px; padding:4px 8px; font-size:11px; cursor:pointer; font-family:inherit; }
+  .add-line:hover{ border-color:#111; color:#111; }
+  .breakdown-net{ font-size:13px; margin-top:8px; padding-top:8px; border-top:1px solid #ddd; }
+
   .status-table td{ padding:4px 10px 4px 0; font-size:13.5px; }
   .status-table td.label{ color:#333; width:210px; }
   .status-table td.val{ font-weight:bold; }
@@ -110,7 +123,22 @@
     <h2>Goals and Current Standing</h2>
     <table class="goals-table">
       <tr><td class="label">ISA target (£)</td><td><input type="number" id="set-isa-target" step="1"></td></tr>
-      <tr><td class="label">Debt owed now (£)</td><td><input type="number" id="set-start-debt" step="0.01"></td></tr>
+      <tr>
+        <td class="label">Debt owed now (£) <span class="breakdown-toggle" id="debt-breakdown-toggle">▸ breakdown</span></td>
+        <td><input type="number" id="set-start-debt" step="0.01"></td>
+      </tr>
+      <tr id="debt-breakdown-row" style="display:none;">
+        <td colspan="2">
+          <div class="breakdown-panel">
+            <div class="field" style="margin-bottom:8px;"><label>Total debt (£)</label><input type="number" id="debt-total" step="0.01"></div>
+            <div class="breakdown-sub-label">Owed to me (comes off the total)</div>
+            <div id="owed-to-me-list"></div>
+            <button type="button" class="add-line" id="btn-add-owed">+ add person</button>
+            <div class="field" style="margin-top:10px; margin-bottom:6px;"><label>Set aside for this debt (£)</label><input type="number" id="debt-set-aside" step="0.01"></div>
+            <div class="breakdown-net">Net debt still owed: <b id="debt-net-display"></b></div>
+          </div>
+        </td>
+      </tr>
       <tr><td class="label">Bank account balance now (£)</td><td><input type="number" id="set-start-bank" step="0.01"></td></tr>
       <tr><td class="label">Credit card balance now (£)</td><td><input type="number" id="set-start-cc" step="0.01"></td></tr>
       <tr><td class="label">ISA balance now (£)</td><td><input type="number" id="set-start-isa" step="0.01"></td></tr>
@@ -135,7 +163,7 @@
       <table class="grid">
         <thead>
           <tr>
-            <th>Month</th><th>Income</th><th>Nett</th><th>Bills</th><th>Rent</th><th>Transport</th><th>Cat</th><th>Other</th>
+            <th>Month</th><th>Income</th><th>Nett</th><th>Bills</th><th>Rent</th><th>Transport</th><th>Cat</th><th>Other</th><th>Savings</th><th>Holiday</th>
             <th>To Debt</th><th>To ISA</th><th>To LISA</th><th></th>
           </tr>
         </thead>
@@ -226,18 +254,25 @@ function taxYearBounds(){
 }
 
 const defaultSettings = { isaTarget: 5000, debtTarget: 0, lisaTarget: 4000 };
-const defaultBalances = { asOf: '2026-06', debt: 4879.68, isa: 4397, lisaTotal: 5917, lisaThisTaxYear: 0, creditCard: 0, bankAccount: 0 };
+const defaultBalances = {
+  asOf: '2026-06', debt: 5239.68, isa: 4397, lisaTotal: 5917, lisaThisTaxYear: 0, creditCard: 0, bankAccount: 0,
+  debtBreakdown: {
+    total: 19000,
+    owedToMe: [ {name:'Eb', amount:6000}, {name:'Ey', amount:2000}, {name:'Ha', amount:1120} ],
+    setAside: 4640.32
+  }
+};
 
 const defaultMonths = [
-  { key:'2026-06', income:0, bills:442.01, rent:0, transport:0, cat:125, other:0, debtPayment:0, isaContribution:0, lisaContribution:0 },
-  { key:'2026-07', income:2300, bills:442.01, rent:0, transport:0, cat:125, other:0, debtPayment:1600, isaContribution:0, lisaContribution:0 },
-  { key:'2026-08', income:2300, bills:442.01, rent:0, transport:0, cat:125, other:0, debtPayment:1600, isaContribution:0, lisaContribution:0 },
-  { key:'2026-09', income:2300, bills:442.01, rent:0, transport:0, cat:125, other:0, debtPayment:1679.68, isaContribution:0, lisaContribution:0 },
-  { key:'2026-10', income:2300, bills:442.01, rent:0, transport:0, cat:125, other:0, debtPayment:0, isaContribution:1600, lisaContribution:0 },
-  { key:'2026-11', income:2300, bills:421.02, rent:0, transport:0, cat:0, other:0, debtPayment:0, isaContribution:0, lisaContribution:1000 },
-  { key:'2026-12', income:2300, bills:421.02, rent:0, transport:0, cat:0, other:0, debtPayment:0, isaContribution:0, lisaContribution:1000 },
-  { key:'2027-01', income:2300, bills:421.02, rent:0, transport:0, cat:0, other:0, debtPayment:0, isaContribution:0, lisaContribution:1000 },
-  { key:'2027-02', income:2300, bills:421.02, rent:0, transport:0, cat:0, other:0, debtPayment:0, isaContribution:0, lisaContribution:1000 }
+  { key:'2026-06', income:0, bills:442.01, rent:0, transport:0, cat:125, other:0, savings:0, holiday:0, debtPayment:0, isaContribution:0, lisaContribution:0 },
+  { key:'2026-07', income:2300, bills:442.01, rent:0, transport:0, cat:125, other:0, savings:0, holiday:0, debtPayment:1600, isaContribution:0, lisaContribution:0 },
+  { key:'2026-08', income:2300, bills:442.01, rent:0, transport:0, cat:125, other:0, savings:0, holiday:0, debtPayment:1600, isaContribution:0, lisaContribution:0 },
+  { key:'2026-09', income:2300, bills:442.01, rent:0, transport:0, cat:125, other:0, savings:0, holiday:0, debtPayment:1679.68, isaContribution:0, lisaContribution:0 },
+  { key:'2026-10', income:2300, bills:442.01, rent:0, transport:0, cat:125, other:0, savings:0, holiday:0, debtPayment:0, isaContribution:1600, lisaContribution:0 },
+  { key:'2026-11', income:2300, bills:421.02, rent:0, transport:0, cat:0, other:0, savings:0, holiday:0, debtPayment:0, isaContribution:0, lisaContribution:1000 },
+  { key:'2026-12', income:2300, bills:421.02, rent:0, transport:0, cat:0, other:0, savings:0, holiday:0, debtPayment:0, isaContribution:0, lisaContribution:1000 },
+  { key:'2027-01', income:2300, bills:421.02, rent:0, transport:0, cat:0, other:0, savings:0, holiday:0, debtPayment:0, isaContribution:0, lisaContribution:1000 },
+  { key:'2027-02', income:2300, bills:421.02, rent:0, transport:0, cat:0, other:0, savings:0, holiday:0, debtPayment:0, isaContribution:0, lisaContribution:1000 }
 ];
 
 let settings = JSON.parse(JSON.stringify(defaultSettings));
@@ -270,7 +305,7 @@ function addMonths(key,n){
   return y+'-'+String(m).padStart(2,'0');
 }
 function nettOf(mo){
-  const out = (mo.bills||0)+(mo.rent||0)+(mo.transport||0)+(mo.cat||0)+(mo.other||0)+(mo.debtPayment||0)+(mo.isaContribution||0)+(mo.lisaContribution||0);
+  const out = (mo.bills||0)+(mo.rent||0)+(mo.transport||0)+(mo.cat||0)+(mo.other||0)+(mo.savings||0)+(mo.holiday||0)+(mo.debtPayment||0)+(mo.isaContribution||0)+(mo.lisaContribution||0);
   return (mo.income||0) - out;
 }
 function lisaCountsThisTaxYear(monthKey){
@@ -315,7 +350,61 @@ function renderSettingsForm(){
   document.getElementById('set-start-lisa-total').value = balances.lisaTotal;
   document.getElementById('set-start-lisa-ty').value = balances.lisaThisTaxYear;
   document.getElementById('set-asof').value = balances.asOf;
+  renderDebtBreakdown();
 }
+
+function computeNetDebt(bd){
+  const owedSum = (bd.owedToMe||[]).reduce((a,p)=>a+(Number(p.amount)||0),0);
+  return round2((Number(bd.total)||0) - owedSum - (Number(bd.setAside)||0));
+}
+
+function renderDebtBreakdown(){
+  const bd = balances.debtBreakdown;
+  document.getElementById('debt-total').value = bd.total;
+  document.getElementById('debt-set-aside').value = bd.setAside;
+  document.getElementById('owed-to-me-list').innerHTML = bd.owedToMe.map((p,i)=>`
+    <div class="owed-row" data-idx="${i}">
+      <input type="text" class="owed-name" value="${(p.name||'').replace(/"/g,'&quot;')}" placeholder="name">
+      <input type="number" class="owed-amount" value="${p.amount}" step="0.01">
+      <button type="button" class="owed-remove" title="remove">✕</button>
+    </div>`).join('');
+  document.getElementById('debt-net-display').textContent = fmt(computeNetDebt(bd));
+}
+
+function syncDebtFromBreakdown(){
+  const bd = balances.debtBreakdown;
+  bd.total = Number(document.getElementById('debt-total').value)||0;
+  bd.setAside = Number(document.getElementById('debt-set-aside').value)||0;
+  document.querySelectorAll('#owed-to-me-list .owed-row').forEach((row,i)=>{
+    bd.owedToMe[i] = { name: row.querySelector('.owed-name').value, amount: Number(row.querySelector('.owed-amount').value)||0 };
+  });
+  const net = computeNetDebt(bd);
+  document.getElementById('debt-net-display').textContent = fmt(net);
+  document.getElementById('set-start-debt').value = net;
+}
+
+document.getElementById('debt-breakdown-toggle').addEventListener('click', ()=>{
+  const row = document.getElementById('debt-breakdown-row');
+  const toggle = document.getElementById('debt-breakdown-toggle');
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : 'table-row';
+  toggle.textContent = open ? '▸ breakdown' : '▾ breakdown';
+});
+document.getElementById('btn-add-owed').addEventListener('click', ()=>{
+  balances.debtBreakdown.owedToMe.push({name:'', amount:0});
+  renderDebtBreakdown();
+});
+document.getElementById('owed-to-me-list').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.owed-remove');
+  if(!btn) return;
+  const idx = Number(btn.closest('.owed-row').dataset.idx);
+  balances.debtBreakdown.owedToMe.splice(idx,1);
+  syncDebtFromBreakdown();
+  renderDebtBreakdown();
+});
+document.getElementById('owed-to-me-list').addEventListener('input', syncDebtFromBreakdown);
+document.getElementById('debt-total').addEventListener('input', syncDebtFromBreakdown);
+document.getElementById('debt-set-aside').addEventListener('input', syncDebtFromBreakdown);
 
 function renderPlan(){
   renderOnTrack();
@@ -373,6 +462,8 @@ function renderMonths(){
       <td><input type="number" step="0.01" data-field="transport" value="${mo.transport}"></td>
       <td><input type="number" step="0.01" data-field="cat" value="${mo.cat}"></td>
       <td><input type="number" step="0.01" data-field="other" value="${mo.other}"></td>
+      <td><input type="number" step="0.01" data-field="savings" value="${mo.savings||0}"></td>
+      <td><input type="number" step="0.01" data-field="holiday" value="${mo.holiday||0}"></td>
       <td><input type="number" step="0.01" data-field="debtPayment" value="${mo.debtPayment}"></td>
       <td><input type="number" step="0.01" data-field="isaContribution" value="${mo.isaContribution}"></td>
       <td><input type="number" step="0.01" data-field="lisaContribution" value="${mo.lisaContribution}"></td>
@@ -413,7 +504,7 @@ document.getElementById('btn-add-month').addEventListener('click', async ()=>{
   if(months.find(m=>m.key===newKey)){ return; }
   const nearestBefore = sorted.filter(m=>m.key < newKey).pop();
   const nearestAfter = sorted.find(m=>m.key > newKey);
-  const template = nearestBefore || nearestAfter || {income:0,bills:0,rent:0,transport:0,cat:0,other:0,debtPayment:0,isaContribution:0,lisaContribution:0};
+  const template = nearestBefore || nearestAfter || {income:0,bills:0,rent:0,transport:0,cat:0,other:0,savings:0,holiday:0,debtPayment:0,isaContribution:0,lisaContribution:0};
   const fresh = Object.assign({}, template, {key:newKey});
   months.push(fresh);
   await saveMonths();
