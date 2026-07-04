@@ -442,7 +442,8 @@ document.getElementById('months-body').addEventListener('click', async (e)=>{
 });
 
 (async function init(){
-  showApp(); // PREVIEW BYPASS - not present in the real deployed file
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){ showApp(); } else { showLogin(); }
 })();
 sb.auth.onAuthStateChange((event)=>{
   if(event === 'SIGNED_OUT') showLogin();
