@@ -141,6 +141,7 @@
       </tr>
       <tr><td class="label">Bank account balance now (£)</td><td><input type="number" id="set-start-bank" step="0.01"></td></tr>
       <tr><td class="label">Credit card balance now (£)</td><td><input type="number" id="set-start-cc" step="0.01"></td></tr>
+      <tr><td class="label">Saver account balance now (£)</td><td><input type="number" id="set-start-saver" step="0.01"></td></tr>
       <tr><td class="label">ISA balance now (£)</td><td><input type="number" id="set-start-isa" step="0.01"></td></tr>
       <tr><td class="label">LISA balance now (£)</td><td><input type="number" id="set-start-lisa-total" step="0.01"></td></tr>
       <tr><td class="label">LISA paid in this tax year (£)</td><td><input type="number" id="set-start-lisa-ty" step="0.01"></td></tr>
@@ -250,14 +251,15 @@ function computeOnTrack(){
   const targetBank = round2((nett/daysInCycle)*daysLeft);
   const bank = balances.bankAccount||0;
   const bankOnTrack = bank >= targetBank;
+  const saver = balances.saverAccount||0;
   const ccWithinLimit = cc >= CC_THRESHOLD;
-  const ccCovered = !ccWithinLimit && bank >= round2(targetBank + extraCC);
+  const ccCovered = !ccWithinLimit && saver >= extraCC;
   return {
     daysInMonth: daysInCycle, daysLeft, nett, extraCC, targetBank,
     cc, ccWithinLimit,
-    ccOnTrack: ccWithinLimit || ccCovered, // overspend is fine as long as the bank balance covers the plain target plus the extra
+    ccOnTrack: ccWithinLimit || ccCovered, // overspend is fine as long as the saver account covers the extra
     ccCovered,
-    bank, bankOnTrack
+    bank, bankOnTrack, saver
   };
 }
 
@@ -273,7 +275,7 @@ function taxYearBounds(){
 
 const defaultSettings = { isaTarget: 5000, debtTarget: 0, lisaTarget: 4000 };
 const defaultBalances = {
-  asOf: '2026-06', debt: 5239.68, isa: 4397, lisaTotal: 5917, lisaThisTaxYear: 0, creditCard: 0, bankAccount: 0,
+  asOf: '2026-06', debt: 5239.68, isa: 4397, lisaTotal: 5917, lisaThisTaxYear: 0, creditCard: 0, bankAccount: 0, saverAccount: 0,
   debtBreakdown: {
     total: 19000,
     owedToMe: [ {name:'Eb', amount:6000}, {name:'Ey', amount:2000}, {name:'Ha', amount:1120} ],
@@ -364,6 +366,7 @@ function renderSettingsForm(){
   document.getElementById('set-start-debt').value = balances.debt;
   document.getElementById('set-start-cc').value = balances.creditCard;
   document.getElementById('set-start-bank').value = balances.bankAccount;
+  document.getElementById('set-start-saver').value = balances.saverAccount;
   document.getElementById('set-start-isa').value = balances.isa;
   document.getElementById('set-start-lisa-total').value = balances.lisaTotal;
   document.getElementById('set-start-lisa-ty').value = balances.lisaThisTaxYear;
@@ -431,6 +434,7 @@ function renderPlan(){
     <span>Debt owed <b>${fmt(tl.finalDebt)}</b></span>
     <span>Credit card <b>${fmt(balances.creditCard)}</b></span>
     <span>Bank account <b>${fmt(balances.bankAccount)}</b></span>
+    <span>Saver account <b>${fmt(balances.saverAccount)}</b></span>
     <span class="${tl.finalIsa>=settings.isaTarget?'ok':''}">ISA buffer <b>${fmt(tl.finalIsa)}</b></span>
     <span class="${tl.finalLisaTY>=settings.lisaTarget?'ok':''}">LISA this tax year <b>${fmt(tl.finalLisaTY)}</b></span>
   `;
@@ -454,7 +458,7 @@ function renderOnTrack(){
   }
   let ccMessage;
   if(t.ccWithinLimit) ccMessage = 'on track';
-  else if(t.ccCovered) ccMessage = 'extra spend of '+fmt(t.extraCC)+' — covered by bank balance';
+  else if(t.ccCovered) ccMessage = 'extra spend of '+fmt(t.extraCC)+' — covered by saver account';
   else ccMessage = 'extra spend of '+fmt(t.extraCC)+' — not currently covered';
   box.innerHTML = `
     <div class="track-box">
@@ -509,6 +513,7 @@ document.getElementById('btn-save-settings').addEventListener('click', async ()=
   balances.debt = Number(document.getElementById('set-start-debt').value)||0;
   balances.creditCard = Number(document.getElementById('set-start-cc').value)||0;
   balances.bankAccount = Number(document.getElementById('set-start-bank').value)||0;
+  balances.saverAccount = Number(document.getElementById('set-start-saver').value)||0;
   balances.isa = Number(document.getElementById('set-start-isa').value)||0;
   balances.lisaTotal = Number(document.getElementById('set-start-lisa-total').value)||0;
   balances.lisaThisTaxYear = Number(document.getElementById('set-start-lisa-ty').value)||0;
